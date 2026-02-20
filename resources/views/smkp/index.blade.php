@@ -295,12 +295,28 @@
                                 <div class="small text-muted">{{ strtoupper($ext) }} &bull; {{ $file->user->name ?? '-' }} ({{ $file->user->role ?? '-' }}) &bull; {{ $file->created_at->format('d M Y') }}</div>
                             </div>
                         </div>
-                        <div class="d-flex gap-2 ms-auto">
-                            <a href="{{ route('smkp.download', $file->id) }}" class="btn btn-sm btn-outline-dark rounded-pill px-3"><i class="bi bi-download me-1"></i> Unduh</a>
-                            @if(Auth::user()->role === 'Auditor' || $file->user_id === Auth::id())
-                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="openDeleteModal('{{ route('smkp.delete_file', $file->id) }}', '{{ $file->name }}', 'Dokumen')"><i class="bi bi-trash me-1"></i> Hapus</button>
-                            @endif
-                        </div>
+                        <div class="d-flex gap-1 gap-sm-2 ms-auto mt-2 mt-sm-0">
+    {{-- Tombol Lihat --}}
+    <a href="{{ route('smkp.view_file', $file->id) }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-2 px-sm-3" title="Lihat Dokumen">
+        <i class="bi bi-eye"></i> 
+        <span class="d-none d-sm-inline ms-1">Lihat</span>
+    </a>
+
+    {{-- Tombol Unduh --}}
+    <a href="{{ route('smkp.download', $file->id) }}" class="btn btn-sm btn-outline-dark rounded-pill px-2 px-sm-3" title="Unduh Dokumen">
+        <i class="bi bi-download"></i> 
+        <span class="d-none d-sm-inline ms-1">Unduh</span>
+    </a>
+    
+    {{-- Tombol Hapus --}}
+    @if(Auth::user()->role === 'Auditor' || $file->user_id === Auth::id())
+    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 px-sm-3" title="Hapus Dokumen" 
+            onclick="openDeleteModal('{{ route('smkp.delete_file', $file->id) }}', '{{ $file->name }}', 'Dokumen')">
+        <i class="bi bi-trash"></i> 
+        <span class="d-none d-sm-inline ms-1">Hapus</span>
+    </button>
+    @endif
+</div>
                     </div>
                 @endforeach
             </div>

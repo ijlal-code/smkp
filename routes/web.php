@@ -25,6 +25,8 @@ Route::middleware(['auth'])->group(function () {
     // Route Index (Bisa diakses semua user yg login)
     Route::get('/smkp/{folder?}', [SmkpController::class, 'index'])->name('smkp.index');
     Route::get('/smkp/file/{id}', [SmkpController::class, 'download'])->name('smkp.download');
+    // Tambahkan baris ini untuk fitur Lihat:
+    Route::get('/smkp/file/{id}/view', [SmkpController::class, 'viewFile'])->name('smkp.view_file');
 
     // --- CONTOH PEMBATASAN AKSES BERDASARKAN ROLE ---
     // Gunakan middleware role:Role1,Role2 untuk membatasi akses upload/delete

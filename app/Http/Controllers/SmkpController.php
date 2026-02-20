@@ -226,6 +226,50 @@ class SmkpController extends Controller
         return Storage::download('public/' . $file->file_path, $file->name . '.' . pathinfo($file->file_path, PATHINFO_EXTENSION));
     }
 
+    public function viewFile($id)
+    {
+        $file = FileUpload::with(['folder', 'user'])->findOrFail($id);
+        $user = Auth::user();
+
+        // 1. Cek izin akses (Sama persis seperti logika download)
+        $isPanduanFile = false;
+        if ($file->folder) {
+            $rootTab = $file->folder;
+            while($rootTab->parent_id != null) {
+                $rootTab = $rootTab->parent;
+            }
+            if (stripos($rootTab->name, 'panduan') !== false) {
+                $isPanduanFile = true;
+            }
+        }
+
+        $isUploadedByAuditor = $file->user && $file->user->role === 'Auditor';
+
+        if ($user->role !== 'Auditor' && $file->user_id !== $user->id && !$isPanduanFile && !$isUploadedByAuditor) {
+            abort(403, 'Anda tidak memiliki izin untuk melihat file ini.');
+        }
+
+        $filePath = storage_path('app/public/' . $file->file_path);
+        if (!file_exists($filePath)) {
+            abort(404, 'File tidak ditemukan di server.');
+        }
+
+        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+
+        // 2. Jika file berupa PDF atau Gambar, render langsung secara "inline" di Browser
+        if (in_array($ext, ['pdf', 'jpg', 'jpeg', 'png', 'gif'])) {
+            return response()->file($filePath, [
+                'Content-Disposition' => 'inline; filename="' . $file->name . '.' . $ext . '"'
+            ]);
+        }
+
+        // 3. Jika file berupa Word/Excel/PPT, tampilkan melalui halaman Blade Preview
+        // Note: Memerlukan koneksi internet dan domain publik untuk merender Office File via Google Docs Viewer
+        $publicUrl = asset('storage/' . $file->file_path); 
+        
+        return view('smkp.preview', compact('file', 'publicUrl', 'ext'));
+    }
+
     public function deleteFile($id)
     {
         $file = FileUpload::findOrFail($id);

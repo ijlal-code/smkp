@@ -15,23 +15,27 @@ class SmkpController extends Controller
     {
         $user = Auth::user();
         $units = []; 
-        $panduanFolders = collect(); 
-        $folders = collect();
+        $tabs = collect(); // <-- TAMBAHKAN BARIS INI
 
-        // --- 1. LOGIKA FOLDER & BREADCRUMBS ---
+        // --- AUTO-MIGRATE SCRIPT: Otomatis memindahkan folder lama ke dalam struktur Tab dinamis ---
+
+        // --- AUTO-MIGRATE SCRIPT: Otomatis memindahkan folder lama ke dalam struktur Tab dinamis ---
+        if (Folder::whereNull('parent_id')->whereIn('type', ['main', 'panduan'])->exists()) {
+            $tabUtama = Folder::firstOrCreate(['name' => 'FOLDER UTAMA', 'type' => 'tab']);
+            Folder::whereNull('parent_id')->where('type', 'main')->update(['parent_id' => $tabUtama->id, 'type' => 'folder']);
+            
+            $tabPanduan = Folder::firstOrCreate(['name' => 'PANDUAN & PROSEDUR', 'type' => 'tab']);
+            Folder::whereNull('parent_id')->where('type', 'panduan')->update(['parent_id' => $tabPanduan->id, 'type' => 'folder']);
+        }
+
         if (!$folderId) {
             // === POSISI ROOT (HALAMAN UTAMA) ===
-            $folders = Folder::whereNull('parent_id')
-                             ->where('type', 'main')
-                             ->get();
-
-            $panduanFolders = Folder::whereNull('parent_id')
-                                    ->where('type', 'panduan')
-                                    ->get();
-
+            // Ambil semua Folder level teratas sebagai TABS
+            $tabs = Folder::whereNull('parent_id')->where('type', 'tab')->orderBy('id')->get();
+            $tabs->load('children'); 
+            
             $currentFolder = null;
             $breadcrumbs = [];
-            
             $fileQuery = FileUpload::whereNull('folder_id');
 
         } else {
@@ -42,6 +46,9 @@ class SmkpController extends Controller
             $breadcrumbs = [];
             $temp = $currentFolder;
             while($temp) {
+                if ($temp->type === 'tab') {
+                    $temp->is_tab_root = true; // Tandai agar link breadcrumb mengarah ke Hash Anchor Tab
+                }
                 array_unshift($breadcrumbs, $temp);
                 $temp = $temp->parent;
             }
@@ -69,18 +76,22 @@ class SmkpController extends Controller
 
         // --- 3. LOGIKA AKSES ROLE (VISIBILITY) ---
         if ($user->role === 'Auditor') {
-            // AUDITOR: Melihat semua file
             $files = $fileQuery->with('user')->latest()->get();
         } else {
-            // USER BIASA
-            $isPanduanArea = $currentFolder && $currentFolder->type === 'panduan';
+            $isPanduanArea = false;
+            if ($currentFolder) {
+                $rootTab = $currentFolder;
+                while($rootTab->parent_id != null) {
+                    $rootTab = $rootTab->parent;
+                }
+                if (stripos($rootTab->name, 'panduan') !== false) {
+                    $isPanduanArea = true;
+                }
+            }
 
             if ($isPanduanArea) {
-                // Di area PANDUAN: User biasa boleh melihat SEMUA file (Read Only)
                 $files = $fileQuery->with('user')->latest()->get();
             } else {
-                // Di area UTAMA/ROOT: 
-                // Hanya file milik sendiri ATAU file yang diupload oleh Auditor (bisa dilihat semua role)
                 $fileQuery->where(function($q) use ($user) {
                     $q->where('user_id', $user->id)
                       ->orWhereHas('user', function($u) {
@@ -91,19 +102,24 @@ class SmkpController extends Controller
             }
         }
 
-        return view('smkp.index', compact('folders', 'panduanFolders', 'files', 'currentFolder', 'breadcrumbs', 'units'));
+        return view('smkp.index', compact('tabs', 'files', 'currentFolder', 'breadcrumbs', 'units'));
     }
 
     public function upload(Request $request, $folderId = null)
     {
         $request->validate([
-            'file' => 'required|file|max:51200', // Max 50MB
+            'file' => 'required|file|max:51200', 
             'name' => 'required|string|max:255', 
         ]);
 
         if ($folderId) {
             $folder = Folder::findOrFail($folderId);
-            if ($folder->type === 'panduan' && Auth::user()->role !== 'Auditor') {
+            $rootTab = $folder;
+            while($rootTab->parent_id != null) {
+                $rootTab = $rootTab->parent;
+            }
+
+            if (stripos($rootTab->name, 'panduan') !== false && Auth::user()->role !== 'Auditor') {
                 abort(403, 'Hanya Auditor yang dapat mengunggah dokumen di folder Panduan.');
             }
         }
@@ -122,34 +138,34 @@ class SmkpController extends Controller
         return back()->with('success', 'File berhasil disimpan.');
     }
 
-    // --- FOLDER MANAGEMENT (HANYA AUDITOR) ---
+    public function createTab(Request $request)
+    {
+        if (Auth::user()->role !== 'Auditor') abort(403, 'Hanya Auditor yang dapat membuat Tab.');
+
+        $request->validate(['name' => 'required|string|max:255']);
+
+        Folder::create([
+            'name' => strtoupper($request->name),
+            'type' => 'tab'
+        ]);
+
+        return back()->with('success', 'Tab Root berhasil ditambahkan.');
+    }
 
     public function createFolder(Request $request, $parentId = null)
     {
-        if (Auth::user()->role !== 'Auditor') {
-            abort(403, 'Hanya Auditor yang dapat membuat folder.');
-        }
+        if (Auth::user()->role !== 'Auditor') abort(403, 'Hanya Auditor yang dapat membuat folder.');
 
         $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'nullable|string|max:50',
-            'type' => 'in:main,panduan',
         ]);
-
-        $type = 'main';
-
-        if ($parentId) {
-            $parent = Folder::findOrFail($parentId);
-            $type = $parent->type;
-        } else {
-            $type = $request->input('type', 'main');
-        }
 
         Folder::create([
             'name' => $request->name,
             'code' => $request->code,
             'parent_id' => $parentId,
-            'type' => $type
+            'type' => 'folder'
         ]);
 
         return back()->with('success', 'Folder berhasil dibuat.');
@@ -157,9 +173,7 @@ class SmkpController extends Controller
 
     public function updateFolder(Request $request, $id)
     {
-        if (Auth::user()->role !== 'Auditor') {
-            abort(403, 'Hanya Auditor yang dapat mengubah folder.');
-        }
+        if (Auth::user()->role !== 'Auditor') abort(403, 'Hanya Auditor yang dapat mengubah folder.');
 
         $request->validate([
             'name' => 'required|string|max:255',
@@ -167,19 +181,14 @@ class SmkpController extends Controller
         ]);
 
         $folder = Folder::findOrFail($id);
-        $folder->update([
-            'name' => $request->name,
-            'code' => $request->code
-        ]);
+        $folder->update(['name' => $request->name, 'code' => $request->code]);
 
-        return back()->with('success', 'Folder berhasil diperbarui.');
+        return back()->with('success', 'Update berhasil.');
     }
 
     public function deleteFolder($id)
     {
-        if (Auth::user()->role !== 'Auditor') {
-            abort(403, 'Hanya Auditor yang dapat menghapus folder.');
-        }
+        if (Auth::user()->role !== 'Auditor') abort(403, 'Hanya Auditor yang dapat menghapus folder.');
 
         $folder = Folder::findOrFail($id);
         $parentId = $folder->parent_id;
@@ -187,22 +196,29 @@ class SmkpController extends Controller
         $folder->delete();
 
         if($parentId) {
-            return to_route('smkp.index', $parentId)->with('success', 'Folder berhasil dihapus.');
+            return to_route('smkp.index', $parentId)->with('success', 'Berhasil dihapus.');
         }
-        return to_route('smkp.index')->with('success', 'Folder berhasil dihapus.');
+        return to_route('smkp.index')->with('success', 'Berhasil dihapus.');
     }
-    
-    // --- FILE ACTIONS ---
 
     public function download($id)
     {
         $file = FileUpload::with(['folder', 'user'])->findOrFail($id);
         $user = Auth::user();
 
-        $isPanduanFile = $file->folder && $file->folder->type === 'panduan';
+        $isPanduanFile = false;
+        if ($file->folder) {
+            $rootTab = $file->folder;
+            while($rootTab->parent_id != null) {
+                $rootTab = $rootTab->parent;
+            }
+            if (stripos($rootTab->name, 'panduan') !== false) {
+                $isPanduanFile = true;
+            }
+        }
+
         $isUploadedByAuditor = $file->user && $file->user->role === 'Auditor';
 
-        // Bisa didownload jika: Auditor, Milik Sendiri, Berada di Folder Panduan, atau diupload oleh Auditor
         if ($user->role !== 'Auditor' && $file->user_id !== $user->id && !$isPanduanFile && !$isUploadedByAuditor) {
             abort(403, 'Anda tidak memiliki izin untuk mengunduh file ini.');
         }

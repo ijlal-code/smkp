@@ -34,6 +34,7 @@ Route::middleware(['auth'])->group(function () {
     
     Route::post('/smkp/upload/{folder?}', [SmkpController::class, 'upload'])->name('smkp.upload');
     Route::post('/smkp/create-folder/{folder?}', [SmkpController::class, 'createFolder'])->name('smkp.create_folder');
+    Route::post('/smkp/create-tab', [SmkpController::class, 'createTab'])->name('smkp.create_tab');
     Route::put('/smkp/folder/{id}', [SmkpController::class, 'updateFolder'])->name('smkp.update_folder');
     Route::delete('/smkp/folder/{id}', [SmkpController::class, 'deleteFolder'])->name('smkp.delete_folder');
     Route::delete('/smkp/file/{id}', [SmkpController::class, 'deleteFile'])->name('smkp.delete_file');

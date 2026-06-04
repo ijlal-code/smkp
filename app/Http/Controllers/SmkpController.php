@@ -106,11 +106,11 @@ class SmkpController extends Controller
     }
 
     public function upload(Request $request, $folderId = null)
-    {
-        $request->validate([
-            'file' => 'required|file|max:51200', 
-            'name' => 'required|string|max:255', 
-        ]);
+        {
+            $request->validate([
+                'file' => 'required|file|mimes:pdf,doc,docx|max:51200', 
+                'name' => 'required|string|max:255', 
+            ]);
 
         if ($folderId) {
             $folder = Folder::findOrFail($folderId);
@@ -125,13 +125,18 @@ class SmkpController extends Controller
         }
 
         $file = $request->file('file');
-        $path = $file->store('public/smkp_files');
+        
+        // 1. UBAH DI SINI: Gunakan parameter kedua 'public' agar masuk ke disk public
+        $path = $file->store('smkp_files', 'public');
 
         FileUpload::create([
             'folder_id' => $folderId,
             'user_id'   => Auth::id(),
             'name'      => $request->name,
-            'file_path' => str_replace('public/', '', $path),
+            
+            // 2. UBAH DI SINI: Tidak perlu str_replace lagi karena hasilnya otomatis 'smkp_files/namafile.ext'
+            'file_path' => $path, 
+            
             'mime_type' => $file->getClientMimeType(),
         ]);
 
@@ -223,7 +228,8 @@ class SmkpController extends Controller
             abort(403, 'Anda tidak memiliki izin untuk mengunduh file ini.');
         }
 
-        return Storage::download('public/' . $file->file_path, $file->name . '.' . pathinfo($file->file_path, PATHINFO_EXTENSION));
+        // PENYESUAIAN DI SINI: Gunakan Storage::disk('public') agar membaca dari disk yang benar
+        return Storage::disk('public')->download($file->file_path, $file->name . '.' . pathinfo($file->file_path, PATHINFO_EXTENSION));
     }
 
     public function viewFile($id)
@@ -279,8 +285,9 @@ class SmkpController extends Controller
             abort(403, 'Anda tidak memiliki izin untuk menghapus file ini.');
         }
 
-        if (Storage::exists('public/' . $file->file_path)) {
-            Storage::delete('public/' . $file->file_path);
+        // PENYESUAIAN DI SINI: Hapus fisik file menggunakan disk public
+        if (Storage::disk('public')->exists($file->file_path)) {
+            Storage::disk('public')->delete($file->file_path);
         }
 
         $file->delete();

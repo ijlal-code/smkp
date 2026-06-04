@@ -82,10 +82,26 @@
         </div>
     </div>
 
-    {{-- ALERT --}}
+   {{-- ALERT --}}
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show border-0 border-start border-5 border-success shadow-sm mb-4" role="alert">
             <i class="bi bi-check-circle-fill me-2"></i> {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
+    {{-- ALERT ERROR VALIDASI (PENOLAKAN FILE ILEGAL) --}}
+    @if ($errors->any())
+        <div class="alert alert-danger alert-dismissible fade show border-0 border-start border-5 border-danger shadow-sm mb-4" role="alert">
+            <div class="d-flex align-items-center mb-2">
+                <i class="bi bi-shield-lock-fill text-danger me-2 fs-5"></i> 
+                <strong class="text-danger">Upload Digagalkan! Sistem mendeteksi pelanggaran:</strong>
+            </div>
+            <ul class="mb-0 text-dark small fw-bold">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
@@ -297,7 +313,7 @@
                         </div>
                         <div class="d-flex gap-1 gap-sm-2 ms-auto mt-2 mt-sm-0">
     {{-- Tombol Lihat --}}
-    <a href="{{ route('smkp.view_file', $file->id) }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-2 px-sm-3" title="Lihat Dokumen">
+    <a href="{{ route('smkp.view', $file->id) }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-2 px-sm-3" title="Lihat Dokumen">
         <i class="bi bi-eye"></i> 
         <span class="d-none d-sm-inline ms-1">Lihat</span>
     </a>

@@ -5,7 +5,7 @@
     <div class="col-md-5">
         <div class="card shadow-sm border-0">
             <div class="card-header bg-black text-white text-center py-3">
-                <h5 class="mb-0 fw-bold">LOGIN SMKP</h5>
+                <h5 class="mb-0 fw-bold">LOGIN</h5>
             </div>
             <div class="card-body p-4">
                 @if ($errors->any())

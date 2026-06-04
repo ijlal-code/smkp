@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Data SMKP Minerba</title>
+    <title>ISO Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
@@ -74,8 +74,8 @@
             <a class="navbar-brand d-flex align-items-center gap-2" href="{{ route('smkp.index') }}">
                 <i class="bi bi-shield-check text-danger fs-3"></i>
                 <div class="d-flex flex-column lh-1">
-                    <span class="text-white">SMKP <span class="text-danger">MINERBA</span></span>
-                    <span style="font-size: 0.65rem; font-weight: 400; color: #aaa; letter-spacing: 1px;">SISTEM MANAJEMEN KESELAMATAN PERTAMBANGAN</span>
+                    <span class="text-white">ISO Management</span>
+                   
                 </div>
             </a>
             
@@ -116,7 +116,7 @@
 
     <footer class="footer text-center">
         <div class="container">
-            <small>&copy; {{ date('Y') }} Sistem SMKP Minerba. All Rights Reserved.</small>
+            <small>&copy; {{ date('Y') }} ISO Management. All Rights Reserved.</small>
         </div>
     </footer>
 
